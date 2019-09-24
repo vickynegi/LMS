@@ -1,0 +1,391 @@
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  </head>
+  <body>
+    <%# if head is login then he will approve/reject the leaves %>
+    <% if @subordinates.present? %>
+      <table class="table table-borderless" id="leavedashboardofhead">
+        <thead>
+          <tr>
+            <th>Subordinate's Name</th>
+            <th>Applied</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @subordinates.each do |sub| %>
+            <% sub.leaves.each do |leave| %>
+              <tr id="leave_<%= leave['id'] %>">
+                <td><%= sub['name'] %></td>
+                <td><%= leave['applied_date'] %></td>
+                <td><%= leave['from_to'].split('to')[0] %></td>
+                <td><%= leave['from_to'].split('to')[1] %></td>
+                <td><%= leave['reason'] %></td>
+                <td id="<%= leave['status'] %>" ><%= User.statuses.keys[leave['status']] %></td>
+                <td>
+                  <select id="select_action_<%= leave['id'] %>" class="form-control">
+                    <option id="" selected>Select Action</option>
+                    <option  id="1">Approved</option>
+                    <option id="2">Rejected</option>
+                  </select>
+                </td>
+                <td><button type="button" class="btn btn-primary" onclick="save_final_result(<%= leave['id'] %>, <%= sub['id'] %>)">Save</button></td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <%# if subordinate log in then he will apply for the holidays %>
+      <br>
+      <br>
+  		<div>
+        <button  style="position: absolute; right: 0;" type="button" class="btn btn-primary" data-toggle="modal" data-target="#applyLeaveModal">New Leave</button>
+  		</div>
+  		<div >
+  		  <% cl = current_user.credited_leaves %>
+  		  <% tl = current_user.taken_leaves %>
+  		  <label>Leaves Credited: </label> <%= cl %>, &nbsp;
+  		  <label>Leaves Taken: </label> <%=  tl %>, &nbsp;
+  		  <label>Balance: </label><%= cl - tl%>
+  		</div>
+  		<center><h3>Leave Dashboard</h3></center>
+
+  		<table class="table table-borderless" id="leavedashboard">
+  		  <thead>
+  		    <tr>
+  		      <th>Head Name</th>
+  		      <th>Applied</th>
+  		      <th>From</th>
+  		      <th>To</th>
+  		      <th>Reason</th>
+  		      <th>Status</th>
+  		      <th></th>
+  		    </tr>
+  		  </thead>
+  		  <tbody>
+  		  	<% unless current_user.leaves.present? %>
+  		  		<tr><td><td><td>You have not applied for any leaves yet!</td></td> </td></tr>
+  		  	<% else %>
+  			    <% current_user.leaves.each do |leave| %>
+  			      <tr id="<%= leave['id'] %>">
+  			        <td><%= current_user.head.name %></td>
+  			        <td><%= leave['applied_date'] %></td>
+  			        <td><%= leave['from_to'].split('to')[0] %></td>
+  			        <td><%= leave['from_to'].split('to')[1] %></td>
+  			        <td><%= leave['reason'] %></td>
+  			        <td><%= User.statuses.keys[leave['status']] %></td>
+  			        <td><button type="button" class="btn btn-primary" data-toggle="modal" data-target="#edit_modal">Edit</button>&nbsp;
+                  <button type="button" class="btn btn-primary" id="cancel">Cancel</button>
+                </td>
+  			      </tr>
+  			    <% end %>
+  			  <% end %>
+  		  </tbody>
+  		</table>
+    <% end %>
+  		
+
+    <!-- Modal for appling new leave -->
+    <div class="modal fade bd-example-modal-lg" id="applyLeaveModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <!-- <h5 class="modal-title" id="exampleModalLabel"></h5> -->
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+          	<table class="table table-borderless" >
+                <thead>
+                    <tr>
+                      <th>From</th>
+          			      <th> To</th>
+          			      <th>Reason</th>
+          			      <th>Head name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                	<tr>
+                	  <td>
+    					          <div class='col-md-8'>
+    						          <div class="form-group">
+    											  <input type='text' class="form-control" id="apply_start_datepicker" style="cursor:pointer" />
+    							        </div>
+    				          	</div>
+                    </td>
+                    <td>
+    									<div class='col-md-8'>
+    										<div class="form-group">
+    											<input type='text' class="form-control" id="apply_end_datepicker" style="cursor:pointer" />
+    										</div>
+    									</div>
+                    </td>
+                	  <td><textarea rows="7" cols="15" id="applyreasonText" ></textarea>'</td>
+                	  <td><%= current_user.head.blank? ? 'no one' : current_user.head.name %></td>
+                	</tr>
+                </tbody>
+        	</table>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" data-dismiss="modal" id="save_applied">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- modal for editing the leave application -->
+    <div class="modal fade bd-example-modal-lg" id="edit_modal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit Leaves</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <table class="table table-borderless" id="edit_table_modal" style="display:none;">
+                <thead>
+                    <tr>
+                      <th>Head</th>
+                      <th>Applied</th>
+                      <th>From</th>
+                      <th>To</th>
+                      <th>Reason</th>
+                      <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                  <tr id="">
+                    <td id="edit_head_name"></td>
+                    <td id="edit_applied_date"></td>
+                    <td>
+                        <div class='col-md-8'>
+                          <div class="form-group">
+                            <input type='text' class="form-control" id="edit_start_datepicker" style="cursor:pointer" />
+                          </div>
+                        </div>
+                    </td>
+                    <td>
+                      <div class='col-md-8'>
+                        <div class="form-group">
+                          <input type='text' class="form-control" id="edit_end_datepicker" style="cursor:pointer" />
+                        </div>
+                      </div>
+                    </td>
+                    <td><textarea rows="7" cols="15" id="editreasonText" ></textarea></td>
+                    <td id="edit_status"></td>
+                  </tr>
+                </tbody>
+          </table>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="update_leaves_modal">Update</button>
+          </div>
+        </div>
+      </div>
+    </div>
+	</body>
+</html>
+
+<script type="text/javascript">
+
+  $(function() {
+    $('#apply_start_datepicker').datepicker({
+        numberOfMonths: 2,
+        onSelect: function (selected) {
+          var dt = new Date(selected);
+          dt.setDate(dt.getDate() + 0);
+          $("#apply_end_datepicker").datepicker("option", "minDate", dt);
+        }
+      });
+
+    $('#apply_end_datepicker').datepicker({
+        numberOfMonths: 2,
+        onSelect: function (selected) {
+          var dt = new Date(selected);
+          dt.setDate(dt.getDate() - 0);
+          $("#apply_start_datepicker").datepicker("option", "maxDate", dt);
+        }
+    });
+
+    $('#edit_start_datepicker').datepicker({
+        numberOfMonths: 2,
+        onSelect: function (selected) {
+          var dt = new Date(selected);
+          dt.setDate(dt.getDate() + 0);
+          $("#edit_end_datepicker").datepicker("option", "minDate", dt);
+    
+        }
+    });
+
+    $('#edit_end_datepicker').datepicker({
+        numberOfMonths: 2,
+        onSelect: function (selected) {
+          var dt = new Date(selected);
+          dt.setDate(dt.getDate() - 0);
+          $("#edit_start_datepicker").datepicker("option", "maxDate", dt);
+        }
+    });
+  });
+  
+  // applying leave
+  $('#save_applied').click(function(){
+    var data = {}
+    var start_date = $("#apply_start_datepicker").val()
+    var end_date = $("#apply_end_datepicker").val()
+    var reason = $('#applyreasonText').val()
+
+    data.start_date = start_date
+    data.end_date = end_date
+    data.reason = reason
+    data.status = 0
+    
+    $.ajax({
+      url: "/apply_leave",
+      type: "post",
+      data: data,
+      success : function(response) {
+          console.log(response)
+          alert(response['message']);
+          location.reload();
+      },
+      error : function(request,error)
+      {}
+    });
+	})
+
+  $('#leavedashboard').on('click', 'button', function(){
+    // finding record and then fetch result
+    if ($(this).text() == 'Edit'){
+      $.ajax({
+        url: "/find_leaves_record",
+        type: "post",
+        data: {leave_id: $(this).closest('tr').attr('id')},
+        success : function(response) {
+          if (response['key']){
+            $('#edit_table_modal').show();
+            $('#edit_table_modal').find('tr:gt(0)').prop('id', response['data']['id']);
+            $('#edit_head_name').text(response['data']['head_name']);
+            $('#edit_applied_date').html(response['data']['applied_date'])
+            var from = response['data']['from_to'].split('to')[0]
+            var to = response['data']['from_to'].split('to')[1]
+            $('#edit_start_datepicker').val(from);
+            $('#edit_end_datepicker').val(to);
+            $('#editreasonText').val(response['data']['reason']);
+            $('#edit_status').html(response['data']['status_name'])
+          }
+          else{
+            alert(response['data'])
+          }
+        },
+        error : function(request,error)
+        {}
+      });
+    }
+    // cancelling the holidays
+    if ($(this).text() == 'Cancel'){
+      var answer=confirm('Do you want to cancel ?');
+      if(answer){
+        var row= $(this).closest('tr')
+        var data = {}
+        data.leave_id = row.attr('id');
+        data.from_to = row.find('td:eq(2)').html() + 'to' + row.find('td:eq(3)').html()
+        $.ajax({
+          url: "/cancel_leaves",
+          type: "post",
+          data: data,
+          success : function(response) {
+            if (response['key']){
+              location.reload();
+            }
+            else{
+              alert(response['data'])
+            }
+          },
+          error : function(request,error)
+          {}
+        });
+      }
+    }
+  });
+  $('#edit_modal').on('click', 'button', function(){
+    // update_leaves_modal
+    var data = {}
+    data.leave_id = $('table#edit_table_modal').find('tr:gt(0)').attr('id');
+    data.edit_start_date = $('#edit_start_datepicker').val();
+    data.edit_end_date = $('#edit_end_datepicker').val();
+    $.ajax({
+      url: "/edit_leaves",
+      type: "post",
+      data: data,
+      success : function(response) {
+        console.log(response)
+        if (response['key']){
+          alert(response['data']);
+          location.reload();
+        }
+        else{
+          alert(response['data'])
+        }
+      },
+      error : function(request,error)
+      {}
+    });
+  });
+
+  // final action taken by the head
+  function save_final_result(leave_id, subordinate_id){
+    console.log(leave_id)
+    console.log(subordinate_id)
+    status_td_id = $('table#leavedashboardofhead').find('tr#leave_'+leave_id).find('td:eq(5)').attr('id');
+    option_box_id = $('#select_action_'+leave_id).find('option:selected').attr('id');
+    if (option_box_id == ""){
+      alert("Please take action");
+      return;
+    }
+    if (status_td_id == 1 && option_box_id == 1){
+      alert("You have already apporved leaves");
+      return;
+    }
+    if (status_td_id == 2 && option_box_id == 2){
+      alert("You have already rejected the leaves");
+      return;
+    }
+    var data = {}
+    data.status = option_box_id
+    data.leave_id = leave_id
+    data.user_id = subordinate_id
+    if (status_td_id == 1 && option_box_id == 2){
+      data.rejected_approved_holidays = 1
+    }
+    console.log(data)
+    $.ajax({
+      url: "/final_action",
+      type: "post",
+      data: data,
+      success : function(response) {
+        if (response['key']){
+          location.reload();
+        }
+        else{
+          alert(response['data'])
+        }
+      },
+      error : function(request,error)
+      {}
+    });
+  }
+</script>
